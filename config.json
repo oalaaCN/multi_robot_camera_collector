@@ -1,0 +1,64 @@
+{
+  "save_dir": "captured_images",
+  "window": {
+    "width": 1280,
+    "height": 820,
+    "refresh_ms": 40
+  },
+  "default_local_ros_ip": "10.192.1.2",
+  "robots": {
+    "TRON1": {
+      "ros_version": "ros1",
+      "ip": "10.192.1.3",
+      "ros_master_uri_template": "http://{robot_ip}:11311",
+      "layout": "single",
+      "cameras": [
+        {
+          "key": "tron1_camera",
+          "name": "TRON1 Camera",
+          "topic": "/camera/color/image_raw"
+        }
+      ]
+    },
+    "TRON2": {
+      "ros_version": "ros2",
+      "ip": "10.192.1.4",
+      "layout": "top_two_bottom",
+      "cameras": [
+        {
+          "key": "top",
+          "name": "Top Camera",
+          "topic": "/top_camera/color/image_raw"
+        },
+        {
+          "key": "left_wrist",
+          "name": "Left Wrist Camera",
+          "topic": "/left_wrist_camera/color/image_raw"
+        },
+        {
+          "key": "right_wrist",
+          "name": "Right Wrist Camera",
+          "topic": "/right_wrist_camera/color/image_raw"
+        }
+      ]
+    },
+    "bunker": {
+      "ros_version": "ros1",
+      "ip": "",
+      "ros_master_uri_template": "http://{robot_ip}:11311",
+      "layout": "vertical_two",
+      "cameras": [
+        {
+          "key": "base",
+          "name": "Base Camera",
+          "topic": "/base_camera/color/image_raw"
+        },
+        {
+          "key": "arm",
+          "name": "Arm Camera",
+          "topic": "/arm_camera/color/image_raw"
+        }
+      ]
+    }
+  }
+}
