@@ -5,7 +5,7 @@
     "height": 820,
     "refresh_ms": 40
   },
-  "default_local_ros_ip": "10.192.1.2",
+  "default_local_ros_ip": "10.192.1.227",
   "robots": {
     "TRON1": {
       "ros_version": "ros1",
@@ -16,7 +16,7 @@
         {
           "key": "tron1_camera",
           "name": "TRON1 Camera",
-          "topic": "/camera/color/image_raw"
+          "topic": "/camera0/color/image_raw"
         }
       ]
     },
@@ -28,17 +28,20 @@
         {
           "key": "top",
           "name": "Top Camera",
-          "topic": "/top_camera/color/image_raw"
+          "topic": "/camera/top/color/image_raw/compressed",
+          "qos": "auto"
         },
         {
           "key": "left_wrist",
           "name": "Left Wrist Camera",
-          "topic": "/left_wrist_camera/color/image_raw"
+          "topic": "/camera/left/color/image_resized/compressed",
+          "qos": "auto"
         },
         {
           "key": "right_wrist",
           "name": "Right Wrist Camera",
-          "topic": "/right_wrist_camera/color/image_raw"
+          "topic": "/camera/right/color/image_resized/compressed",
+          "qos": "auto"
         }
       ]
     },

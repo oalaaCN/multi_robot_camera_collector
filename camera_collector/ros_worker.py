@@ -94,6 +94,77 @@ def _image_msg_to_bgr(msg: Any, bridge: Any) -> np.ndarray:
     return image
 
 
+def _compressed_image_msg_to_bgr(msg: Any) -> np.ndarray:
+    import cv2
+    import numpy as np
+
+    data = np.frombuffer(msg.data, dtype=np.uint8)
+    image = cv2.imdecode(data, cv2.IMREAD_UNCHANGED)
+    if image is None:
+        raise ValueError("failed to decode compressed image")
+    if image.ndim == 2:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    if image.dtype != np.uint8:
+        image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    if image.shape[-1] == 4:
+        image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+    return image
+
+
+def _is_compressed_topic(topic: str) -> bool:
+    return topic.rstrip("/").endswith("/compressed")
+
+
+def _ros2_image_qos(qos_name: str) -> Any:
+    from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+
+    qos_profiles = {
+        "default": 10,
+        "sensor_data": QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
+            durability=DurabilityPolicy.VOLATILE,
+        ),
+        "reliable": QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.VOLATILE,
+        ),
+        "reliable_transient_local": QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        ),
+    }
+    return qos_profiles.get(qos_name, qos_profiles["default"])
+
+
+def _ros2_image_qos_profiles(qos_name: str) -> list[Any]:
+    if qos_name == "auto":
+        return [
+            _ros2_image_qos("sensor_data"),
+            _ros2_image_qos("reliable"),
+            _ros2_image_qos("reliable_transient_local"),
+            _ros2_image_qos("default"),
+        ]
+    return [_ros2_image_qos(qos_name)]
+
+
+def _ros2_qos_label(qos_name: str) -> str:
+    if qos_name == "sensor_data":
+        return "best_effort/volatile"
+    if qos_name == "reliable":
+        return "reliable/volatile"
+    if qos_name == "reliable_transient_local":
+        return "reliable/transient_local"
+    if qos_name == "auto":
+        return "auto"
+    return "default"
+
+
 def _run_ros1_worker(
     robot: dict[str, Any],
     frame_queue: Queue,
@@ -102,23 +173,28 @@ def _run_ros1_worker(
 ) -> None:
     import rospy
     from cv_bridge import CvBridge
-    from sensor_msgs.msg import Image
+    from sensor_msgs.msg import CompressedImage, Image
 
     bridge = CvBridge()
     node_name = f"camera_collector_{robot['name'].lower()}_{int(time.time())}"
     rospy.init_node(node_name, anonymous=True, disable_signals=True)
 
-    def callback_factory(camera_key: str):
-        def on_image(msg: Image) -> None:
+    def image_callback_factory(camera_key: str):
+        def on_image(msg: Image | CompressedImage) -> None:
             try:
-                _publish_frame(frame_queue, camera_key, _image_msg_to_bgr(msg, bridge))
+                if isinstance(msg, CompressedImage):
+                    image_bgr = _compressed_image_msg_to_bgr(msg)
+                else:
+                    image_bgr = _image_msg_to_bgr(msg, bridge)
+                _publish_frame(frame_queue, camera_key, image_bgr)
             except Exception as exc:
                 status_queue.put(("warn", f"{camera_key}: {exc}"))
 
         return on_image
 
     for camera in robot["cameras"]:
-        rospy.Subscriber(camera["topic"], Image, callback_factory(camera["key"]), queue_size=1)
+        message_type = CompressedImage if _is_compressed_topic(camera["topic"]) else Image
+        rospy.Subscriber(camera["topic"], message_type, image_callback_factory(camera["key"]), queue_size=1)
 
     topics = ", ".join(camera["topic"] for camera in robot["cameras"])
     status_queue.put(("info", f"ROS1 connected: {robot['name']} [{topics}]"))
@@ -135,16 +211,24 @@ def _run_ros2_worker(
 ) -> None:
     import rclpy
     from cv_bridge import CvBridge
-    from sensor_msgs.msg import Image
+    from sensor_msgs.msg import CompressedImage, Image
 
     rclpy.init(args=None)
     node = rclpy.create_node(f"camera_collector_{robot['name'].lower()}")
     bridge = CvBridge()
+    received_counts = {camera["key"]: 0 for camera in robot["cameras"]}
 
-    def callback_factory(camera_key: str):
-        def on_image(msg: Image) -> None:
+    def image_callback_factory(camera_key: str):
+        def on_image(msg: Image | CompressedImage) -> None:
             try:
-                _publish_frame(frame_queue, camera_key, _image_msg_to_bgr(msg, bridge))
+                if isinstance(msg, CompressedImage):
+                    image_bgr = _compressed_image_msg_to_bgr(msg)
+                else:
+                    image_bgr = _image_msg_to_bgr(msg, bridge)
+                _publish_frame(frame_queue, camera_key, image_bgr)
+                received_counts[camera_key] += 1
+                if received_counts[camera_key] == 1:
+                    status_queue.put(("info", f"{camera_key}: first frame received"))
             except Exception as exc:
                 status_queue.put(("warn", f"{camera_key}: {exc}"))
 
@@ -152,20 +236,37 @@ def _run_ros2_worker(
 
     subscriptions = []
     for camera in robot["cameras"]:
-        subscriptions.append(
-            node.create_subscription(
-                Image,
-                camera["topic"],
-                callback_factory(camera["key"]),
-                10,
+        message_type = CompressedImage if _is_compressed_topic(camera["topic"]) else Image
+        qos_name = camera.get("qos", "default")
+        for image_qos in _ros2_image_qos_profiles(qos_name):
+            subscriptions.append(
+                node.create_subscription(
+                    message_type,
+                    camera["topic"],
+                    image_callback_factory(camera["key"]),
+                    image_qos,
+                )
             )
-        )
 
     topics = ", ".join(camera["topic"] for camera in robot["cameras"])
-    status_queue.put(("info", f"ROS2 connected: {robot['name']} [{topics}]"))
+    qos_labels = ", ".join(
+        f"{camera['key']}={_ros2_qos_label(camera.get('qos', 'default'))}" for camera in robot["cameras"]
+    )
+    status_queue.put(("info", f"ROS2 connected: {robot['name']} [{topics}], QoS: {qos_labels}"))
+    start_time = time.time()
+    warned_no_frames = False
     try:
         while not stop_event.is_set():
             rclpy.spin_once(node, timeout_sec=0.05)
+            if not warned_no_frames and time.time() - start_time > 5 and not any(received_counts.values()):
+                status_queue.put(
+                    (
+                        "warn",
+                        "ROS2 topics discovered, but no image frames received after 5s. "
+                        "Check camera publishing state and QoS/network settings.",
+                    )
+                )
+                warned_no_frames = True
     finally:
         for subscription in subscriptions:
             node.destroy_subscription(subscription)

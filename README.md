@@ -32,6 +32,32 @@ cd multi_robot_camera_collector
 python run_camera_collector.py
 ```
 
+如果当前终端或 VS Code 激活了 Conda，ROS1 raw 图像解码时可能遇到 `libp11-kit.so.0: undefined symbol: ffi_type_pointer, version LIBFFI_BASE_7.0`。这是 Conda `libffi` 和系统 ROS 库冲突，可以用系统 Python 启动脚本避开：
+
+```bash
+./start.sh --config config.yaml
+```
+
+TRON2 是 ROS2 机器人，需要系统安装 ROS2 Foxy 后用 Foxy 环境启动：
+
+```bash
+sudo apt-get update
+sudo apt-get install ros-foxy-ros-base ros-foxy-rclpy ros-foxy-sensor-msgs ros-foxy-cv-bridge
+./start_ros2_foxy.sh --config config.yaml
+```
+
+Noetic 和 Foxy 可以共存，但不要在同一个终端手动同时 source 两套环境。连接 TRON1/bunker 用 `start.sh`，连接 TRON2 用 `start_ros2_foxy.sh`。
+
+调试 TRON2 话题时也不要在 `(base)` 或 Noetic 终端里裸跑 `ros2`，用项目里的包装器：
+
+```bash
+./ros2_tron2_env.sh ros2 topic list
+./ros2_tron2_env.sh ros2 topic info -v /camera/top/color/image_raw/compressed
+./ros2_tron2_env.sh ros2 topic hz /camera/top/color/image_raw/compressed
+```
+
+如果 TRON2 本机能看到图像帧率，但采集电脑只能看到 publisher、收不到 `hz`，说明相机节点的 DDS 数据通道没有跨机器发出。需要在 TRON2 端确认相机节点启动环境包含 `ROS_LOCALHOST_ONLY=0`、两端 `ROS_DOMAIN_ID` 一致，并且相机节点使用可跨网卡通信的 DDS/UDP 配置。
+
 没有接入机器人时，可以先用模拟画面检查界面和保存逻辑：
 
 ```bash
@@ -75,7 +101,7 @@ ROS2 机器人会设置 `ROS_IP` / `ROS_HOSTNAME`，然后用 `rclpy` 订阅配�
 }
 ```
 
-如果现场 topic 名称不同，只需要把对应 `topic` 改成实际的 `sensor_msgs/Image` 话题即可。
+如果现场 topic 名称不同，只需要把对应 `topic` 改成实际的 `sensor_msgs/Image` 话题即可。`/compressed` 结尾的话题会按 `sensor_msgs/CompressedImage` 自动解码。
 
 仓库里也保留了 `config.yaml`。如果想用 YAML，可以安装 `PyYAML` 后这样启动：
 

@@ -11,6 +11,7 @@ class CameraConfig:
     key: str
     name: str
     topic: str
+    qos: str = "default"
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,7 @@ def load_config(path: Path) -> AppConfig:
                 key=str(camera["key"]),
                 name=str(camera.get("name", camera["key"])),
                 topic=str(camera["topic"]),
+                qos=str(camera.get("qos", "default")).lower(),
             )
             for camera in robot_raw["cameras"]
         ]
