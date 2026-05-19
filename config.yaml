@@ -13,7 +13,7 @@ robots:
     cameras:
       - key: tron1_camera
         name: TRON1 Camera
-        topic: /camera0/color/image_raw/compressed
+        topic: /camera0/color/image_raw
   TRON2:
     ros_version: ros2
     ip: 10.192.1.4
@@ -39,7 +39,7 @@ robots:
     cameras:
       - key: base
         name: Base Camera
-        topic: /base_camera/color/image_raw
+        topic: /cam_front/color/image_raw
       - key: arm
         name: Arm Camera
-        topic: /arm_camera/color/image_raw
+        topic: /cam_wrist/color/image_raw

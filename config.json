@@ -54,12 +54,12 @@
         {
           "key": "base",
           "name": "Base Camera",
-          "topic": "/base_camera/color/image_raw"
+          "topic": "/cam_front/color/image_raw"
         },
         {
           "key": "arm",
           "name": "Arm Camera",
-          "topic": "/arm_camera/color/image_raw"
+          "topic": "/cam_wrist/color/image_raw"
         }
       ]
     }
