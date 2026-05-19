@@ -51,7 +51,7 @@ def serialize_robot(robot: Any) -> dict[str, Any]:
 def _publish_frame(frame_queue: Queue, camera_key: str, image_bgr: np.ndarray) -> None:
     import cv2
 
-    ok, encoded = cv2.imencode(".jpg", image_bgr, [cv2.IMWRITE_JPEG_QUALITY, 88])
+    ok, encoded = cv2.imencode(".png", image_bgr)
     if not ok:
         return
     payload = (camera_key, time.time(), encoded.tobytes())

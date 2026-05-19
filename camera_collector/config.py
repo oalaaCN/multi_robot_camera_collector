@@ -19,6 +19,7 @@ class RobotConfig:
     name: str
     ros_version: str
     ip: str
+    local_ros_ip: str
     layout: str
     cameras: list[CameraConfig]
     ros_master_uri_template: str | None = None
@@ -66,6 +67,7 @@ def load_config(path: Path) -> AppConfig:
             name=robot_name,
             ros_version=str(robot_raw["ros_version"]).lower(),
             ip=str(robot_raw.get("ip") or ""),
+            local_ros_ip=str(robot_raw.get("local_ros_ip") or raw.get("default_local_ros_ip", "")),
             layout=str(robot_raw["layout"]),
             cameras=cameras,
             ros_master_uri_template=robot_raw.get("ros_master_uri_template"),
