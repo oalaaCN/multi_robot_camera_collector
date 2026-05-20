@@ -28,6 +28,7 @@ class RobotConfig:
 @dataclass(frozen=True)
 class AppConfig:
     save_dir: Path
+    save_dir_options: list[Path]
     default_local_ros_ip: str
     window_width: int
     window_height: int
@@ -46,10 +47,11 @@ def load_config(path: Path) -> AppConfig:
         else:
             raw = json.load(f)
 
-    base_dir = path.parent
-    save_dir = Path(raw.get("save_dir", "captured_images"))
-    if not save_dir.is_absolute():
-        save_dir = base_dir / save_dir
+    base_dir = path.resolve().parent
+    save_dir = _resolve_config_path(raw.get("save_dir", "captured_images"), base_dir)
+    save_dir_options = [_resolve_config_path(path, base_dir) for path in raw.get("save_dir_options", [])]
+    if save_dir not in save_dir_options:
+        save_dir_options.insert(0, save_dir)
 
     window = raw.get("window", {})
     robots: dict[str, RobotConfig] = {}
@@ -75,9 +77,17 @@ def load_config(path: Path) -> AppConfig:
 
     return AppConfig(
         save_dir=save_dir,
+        save_dir_options=save_dir_options,
         default_local_ros_ip=str(raw.get("default_local_ros_ip", "")),
         window_width=int(window.get("width", 1280)),
         window_height=int(window.get("height", 820)),
         refresh_ms=int(window.get("refresh_ms", 40)),
         robots=robots,
     )
+
+
+def _resolve_config_path(value: Any, base_dir: Path) -> Path:
+    path = Path(str(value)).expanduser()
+    if not path.is_absolute():
+        path = base_dir / path
+    return path

@@ -8,9 +8,10 @@
 - TRON2：ROS2，默认机器人 IP `10.192.1.4`，默认本机 IP `10.192.1.227`，顶部摄像头在上方，两个腕部摄像头在下方左右分屏。
 - bunker：ROS1，默认机器人 IP `192.168.1.102`，默认本机 IP `192.168.1.100`，两个摄像头上下分屏。
 - 切换机器人时会自动切换对应的本机 `ROS_IP` 和机器人 IP，也可以在界面里临时修改后点击“连接 / 重连”。
+- 界面中可以填写当前任务名称，并从下拉框选择或手动输入保存根目录。
 - 右侧四个保存按钮：`执行任务前`、`执行任务中`、`执行成功`、`执行失败`。
 - 截图保存最新 ROS camera 原始帧，不保存带标题、边框或缩放后的窗口预览画面。
-- 保存文件名格式：`年月日_时分秒_毫秒_按钮名称_机器人名称_camera_key.png`。多摄像头机器人会一次保存多张 PNG。
+- 保存路径格式：`保存根目录/机器人名称/任务名称/年月日_时分秒_毫秒_按钮名称_camera_key.png`。多摄像头机器人会一次保存多张 PNG。
 
 ## 安装依赖
 
@@ -120,4 +121,20 @@ python run_camera_collector.py --config config.yaml
 multi_robot_camera_collector/captured_images
 ```
 
-也可以在界面中选择其他目录。
+也可以在界面中从下拉框选择配置好的目录、手动输入目录，或点击“选择”浏览目录。最终截图会按当前机器人和任务名称分层保存，例如：
+
+```text
+multi_robot_camera_collector/captured_images/TRON2/pick_box/20260520_153012_123_执行任务中_top.png
+```
+
+下拉框选项在 `config.json` 或 `config.yaml` 的 `save_dir_options` 中配置：
+
+```json
+{
+  "save_dir": "captured_images",
+  "save_dir_options": [
+    "captured_images",
+    "dataset/captured_images"
+  ]
+}
+```

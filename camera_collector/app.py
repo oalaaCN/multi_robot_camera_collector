@@ -34,6 +34,8 @@ class CameraCollectorApp:
         self.local_ip_var = StringVar(value=config.robots[self.robot_names[0]].local_ros_ip)
         self.robot_ip_var = StringVar(value=config.robots[self.robot_names[0]].ip)
         self.save_dir_var = StringVar(value=str(config.save_dir))
+        self.save_dir_options = [str(path) for path in config.save_dir_options]
+        self.task_name_var = StringVar(value="default_task")
         self.status_var = StringVar(value="请选择机器人并连接")
 
         self.ctx = mp.get_context("spawn")
@@ -99,9 +101,17 @@ class CameraCollectorApp:
         save_bar = ttk.Frame(shell, padding=(14, 10), style="Panel.TFrame")
         save_bar.pack(fill=tk.X, pady=(0, 12), side=tk.TOP)
         save_bar.columnconfigure(1, weight=1)
+        save_bar.columnconfigure(4, weight=1)
         ttk.Label(save_bar, text="保存目录", style="Field.TLabel").grid(row=0, column=0, sticky=tk.W, padx=(0, 8))
-        ttk.Entry(save_bar, textvariable=self.save_dir_var).grid(row=0, column=1, sticky=tk.EW, padx=(0, 8))
+        self.save_dir_combo = ttk.Combobox(
+            save_bar,
+            textvariable=self.save_dir_var,
+            values=self.save_dir_options,
+        )
+        self.save_dir_combo.grid(row=0, column=1, sticky=tk.EW, padx=(0, 8))
         ttk.Button(save_bar, text="选择", command=self._choose_save_dir).grid(row=0, column=2, sticky=tk.E)
+        ttk.Label(save_bar, text="任务名称", style="Field.TLabel").grid(row=0, column=3, sticky=tk.W, padx=(18, 8))
+        ttk.Entry(save_bar, textvariable=self.task_name_var, width=28).grid(row=0, column=4, sticky=tk.EW)
 
         body = ttk.Frame(shell, style="App.TFrame")
         body.pack(fill=tk.BOTH, expand=True)
@@ -176,6 +186,12 @@ class CameraCollectorApp:
         directory = filedialog.askdirectory(initialdir=self.save_dir_var.get() or str(Path.cwd()))
         if directory:
             self.save_dir_var.set(directory)
+            self._add_save_dir_option(directory)
+
+    def _add_save_dir_option(self, directory: str) -> None:
+        if directory not in self.save_dir_options:
+            self.save_dir_options.append(directory)
+            self.save_dir_combo.configure(values=self.save_dir_options)
 
     def _on_robot_changed(self) -> None:
         robot = self.current_robot
@@ -392,16 +408,23 @@ class CameraCollectorApp:
             messagebox.showwarning("暂无图像", "还没有收到 ROS camera 帧，暂时无法截图。")
             return
 
-        save_dir = Path(self.save_dir_var.get()).expanduser()
+        safe_robot = _safe_filename(robot.name)
+        safe_task = _safe_filename(self.task_name_var.get())
+        if not safe_task:
+            messagebox.showwarning("缺少任务名称", "请先填写当前任务名称。")
+            return
+
+        save_base_dir = Path(self.save_dir_var.get()).expanduser()
+        save_dir = save_base_dir / safe_robot / safe_task
         save_dir.mkdir(parents=True, exist_ok=True)
+        self._add_save_dir_option(str(save_base_dir))
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         safe_label = _safe_filename(capture_label)
-        safe_robot = _safe_filename(robot.name)
         saved_outputs: list[Path] = []
         for camera, image in frames_to_save:
             safe_camera = _safe_filename(camera.key)
-            output = save_dir / f"{timestamp}_{safe_label}_{safe_robot}_{safe_camera}.png"
+            output = save_dir / f"{timestamp}_{safe_label}_{safe_camera}.png"
             image.save(output, "PNG")
             saved_outputs.append(output)
 

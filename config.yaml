@@ -1,4 +1,7 @@
 save_dir: captured_images
+save_dir_options:
+  - captured_images
+  - dataset/captured_images
 window:
   width: 1280
   height: 820
