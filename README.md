@@ -5,7 +5,7 @@
 ## 功能
 
 - TRON1：ROS1，默认机器人 IP `10.192.1.3`，默认本机 IP `10.192.1.167`，单摄像头全屏显示。
-- TRON2：ROS2，默认机器人 IP `10.192.1.4`，默认本机 IP `10.192.1.227`，顶部摄像头在上方，两个腕部摄像头在下方左右分屏。
+- TRON2：ROS2，默认机器人 IP `192.168.1.100`，默认本机 IP `192.168.1.105`，顶部摄像头在上方，两个腕部摄像头在下方左右分屏。
 - bunker：ROS1，默认机器人 IP `192.168.1.102`，默认本机 IP `192.168.1.100`，两个摄像头上下分屏。
 - 切换机器人时会自动切换对应的本机 `ROS_IP` 和机器人 IP，也可以在界面里临时修改后点击“连接 / 重连”。
 - 界面中可以填写当前任务名称，并从下拉框选择或手动输入保存根目录。
@@ -56,6 +56,12 @@ Noetic 和 Foxy 可以共存，但不要在同一个终端手动同时 source �
 ./ros2_tron2_env.sh ros2 topic list
 ./ros2_tron2_env.sh ros2 topic info -v /camera/top/color/image_raw/compressed
 ./ros2_tron2_env.sh ros2 topic hz /camera/top/color/image_raw/compressed
+```
+
+`ros2_tron2_env.sh` 和 `start_ros2_foxy.sh` 会根据配置或环境变量生成 Fast DDS profile。ROS2/Fast DDS 不会靠 `ROS_IP` 自动改写 XML 里的网卡白名单；如果现场 IP 变化，优先修改 `config.json` / `config.yaml` 中 TRON2 的 `ip` 和 `local_ros_ip`，或者临时这样覆盖：
+
+```bash
+TRON2_LOCAL_IP=192.168.1.105 TRON2_ROBOT_IP=192.168.1.100 ./ros2_tron2_env.sh ros2 topic list
 ```
 
 如果 TRON2 本机能看到图像帧率，但采集电脑只能看到 publisher、收不到 `hz`，说明相机节点的 DDS 数据通道没有跨机器发出。需要在 TRON2 端确认相机节点启动环境包含 `ROS_LOCALHOST_ONLY=0`、两端 `ROS_DOMAIN_ID` 一致，并且相机节点使用可跨网卡通信的 DDS/UDP 配置。

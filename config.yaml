@@ -20,8 +20,8 @@ robots:
         topic: /camera0/color/image_raw
   TRON2:
     ros_version: ros2
-    ip: 10.192.1.4
-    local_ros_ip: 10.192.1.227
+    ip: 192.168.1.100
+    local_ros_ip: 192.168.1.105
     layout: top_two_bottom
     cameras:
       - key: top

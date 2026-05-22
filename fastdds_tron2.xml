@@ -5,7 +5,7 @@
       <transport_id>tron2_wifi_udp</transport_id>
       <type>UDPv4</type>
       <interfaceWhiteList>
-        <address>10.192.1.227</address>
+        <address>192.168.1.105</address>
       </interfaceWhiteList>
     </transport_descriptor>
   </transport_descriptors>
@@ -16,7 +16,7 @@
         <initialPeersList>
           <locator>
             <udpv4>
-              <address>10.192.1.4</address>
+              <address>192.168.1.100</address>
             </udpv4>
           </locator>
         </initialPeersList>

@@ -32,6 +32,13 @@ def run_camera_worker(
         os.environ["ROS_MASTER_URI"] = template.format(robot_ip=robot_ip)
 
     try:
+        if robot["ros_version"] == "ros2" and not mock:
+            from camera_collector.fastdds_profile import configure_fastdds_profile
+
+            profile_path = configure_fastdds_profile(local_ros_ip, robot_ip)
+            peer = robot_ip or "multicast discovery"
+            status_queue.put(("info", f"Fast DDS profile: {profile_path} local={local_ros_ip}, peer={peer}"))
+
         if mock:
             _run_mock_worker(robot, frame_queue, status_queue, stop_event)
         elif robot["ros_version"] == "ros1":
